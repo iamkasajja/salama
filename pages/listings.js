@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Search, MapPin, Users, DollarSign, Home, Phone } from 'lucide-react';
 import BookingForm from '../components/BookingForm';
+import { db } from '../firebase/config';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 
 export default function ListingsPage() {
   const [listings, setListings] = useState([]);
@@ -13,38 +15,30 @@ export default function ListingsPage() {
   });
 
   useEffect(() => {
-    const mockListings = [
-      {
-        id: 1,
-        title: "Modern 1BR in Gombe",
-        neighborhood: "Gombe",
-        description: "Beautiful apartment in the heart of Gombe with modern amenities.",
-        price_per_night: 60,
-        price_per_week: 350,
-        max_guests: 2,
-        bedrooms: 1,
-        bathrooms: 1,
-        amenities: ["WiFi", "Air Conditioning", "Kitchen", "TV"],
-        photos: ["https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800"],
-        is_active: true
-      },
-      {
-        id: 2,
-        title: "Spacious 2BR in Kinshasa",
-        neighborhood: "Kinshasa",
-        description: "Comfortable 2-bedroom apartment perfect for families.",
-        price_per_night: 80,
-        price_per_week: 500,
-        max_guests: 4,
-        bedrooms: 2,
-        bathrooms: 2,
-        amenities: ["WiFi", "Air Conditioning", "Kitchen", "Parking", "TV"],
-        photos: ["https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800"],
-        is_active: true
-      }
-    ];
-    setListings(mockListings);
-  }, []);
+  const fetchListings = async () => {
+    try {
+      const listingsRef = collection(db, 'listings');
+      const q = query(listingsRef, where('is_active', '==', true));
+      const querySnapshot = await getDocs(q);
+      
+      const fetchedListings = [];
+      querySnapshot.forEach((doc) => {
+        fetchedListings.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+      
+      setListings(fetchedListings);
+    } catch (error) {
+      console.error('Error fetching listings:', error);
+      // Fallback to empty if Firebase fails
+      setListings([]);
+    }
+  };
+
+  fetchListings();
+}, []);
 
   const filteredListings = listings.filter(listing => {
     if (filters.neighborhood && listing.neighborhood !== filters.neighborhood) return false;
