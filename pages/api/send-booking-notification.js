@@ -2,9 +2,7 @@
 // This handles sending BOTH admin and guest emails when a booking is submitted
 
 import { Resend } from 'resend';
-
-const resend = new Resend('re_FnzNEnSt_BgTomi3UNF4JuK7NQw3RDwRQ');
-
+const resend = new Resend(process.env.RESEND_API_KEY || process.env.NEXT_PUBLIC_RESEND_API_KEY);
 export default async function handler(req, res) {
   // Only allow POST requests
   if (req.method !== 'POST') {
