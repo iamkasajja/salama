@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
-import { db, auth } from '../firebase/config';
-import { Home, Plus, Edit2, Trash2, Check, Save, Eye, BarChart3, Shield, LogOut } from 'lucide-react';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { db, auth, storage } from '../firebase/config';
+import { Home, Plus, Edit2, Trash2, Check, Save, Eye, BarChart3, Shield, LogOut, Upload, X, Image as ImageIcon, Video } from 'lucide-react';
 
 const NEIGHBORHOODS = ["Gombe", "Ngaliema", "Limete", "Ma Campagne", "Binza"];
 const AMENITIES_LIST = ["Wi-Fi", "AC", "Generator", "Water", "Security", "Parking", "Kitchen", "TV"];
@@ -126,7 +127,7 @@ export default function AdminPanel() {
                 onEdit={(listing) => { setEditingListing(listing); setView('edit'); }}
                 onDelete={handleDeleteListing}
                 onNew={() => {
-                  setEditingListing({ title: '', neighborhood: 'Gombe', description: '', price_per_night: 0, price_per_week: 0, max_guests: 2, amenities: [], photos: [], is_verified: false, is_active: true, internal_notes: '' });
+                  setEditingListing({ title: '', neighborhood: 'Gombe', description: '', price_per_night: 0, price_per_week: 0, max_guests: 2, amenities: [], photos: [], videos: [], is_verified: false, is_active: true, internal_notes: '' });
                   setView('edit');
                 }}
               />
@@ -246,7 +247,11 @@ const ListingsView = ({ listings, onEdit, onDelete, onNew }) => (
 
 const EditListingView = ({ listing, onSave, onCancel }) => {
   const [formData, setFormData] = useState(listing);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({});
+
   const handleChange = (field, value) => { setFormData(prev => ({ ...prev, [field]: value })); };
+  
   const handleAmenityToggle = (amenity) => {
     const current = formData.amenities || [];
     if (current.includes(amenity)) {
@@ -256,37 +261,283 @@ const EditListingView = ({ listing, onSave, onCancel }) => {
     }
   };
 
+  const handleMediaUpload = async (event) => {
+    const files = Array.from(event.target.files);
+    if (files.length === 0) return;
+
+    setUploadingMedia(true);
+    const uploadedPhotos = [...(formData.photos || [])];
+    const uploadedVideos = [...(formData.videos || [])];
+
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const isVideo = file.type.startsWith('video/');
+        const timestamp = Date.now();
+        const fileName = `${timestamp}_${file.name}`;
+        const storageRef = ref(storage, `listings/${formData.id || 'new'}/${fileName}`);
+
+        setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
+
+        // Upload file
+        await uploadBytes(storageRef, file);
+        const downloadURL = await getDownloadURL(storageRef);
+
+        if (isVideo) {
+          uploadedVideos.push(downloadURL);
+        } else {
+          uploadedPhotos.push(downloadURL);
+        }
+
+        setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
+      }
+
+      handleChange('photos', uploadedPhotos);
+      handleChange('videos', uploadedVideos);
+      setUploadProgress({});
+    } catch (error) {
+      alert('Erreur lors du téléchargement: ' + error.message);
+    } finally {
+      setUploadingMedia(false);
+    }
+  };
+
+  const removeMedia = (url, type) => {
+    if (type === 'photo') {
+      handleChange('photos', formData.photos.filter(p => p !== url));
+    } else {
+      handleChange('videos', formData.videos.filter(v => v !== url));
+    }
+  };
+
   return (
     <div>
       <h1 className="text-3xl font-bold text-gray-900 mb-8">{listing.id ? 'Modifier le logement' : 'Nouveau logement'}</h1>
       <div className="bg-white rounded-lg shadow-sm p-6 space-y-6">
-        <input type="text" value={formData.title} onChange={(e) => handleChange('title', e.target.value)} placeholder="Titre" className="w-full px-4 py-3 border border-gray-300 rounded-lg" />
-        <textarea value={formData.description} onChange={(e) => handleChange('description', e.target.value)} placeholder="Description" rows={4} className="w-full px-4 py-3 border border-gray-300 rounded-lg" />
-        <select value={formData.neighborhood} onChange={(e) => handleChange('neighborhood', e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg">
-          {NEIGHBORHOODS.map(n => <option key={n} value={n}>{n}</option>)}
-        </select>
-        <div className="grid grid-cols-3 gap-4">
-          <input type="number" value={formData.price_per_night} onChange={(e) => handleChange('price_per_night', Number(e.target.value))} placeholder="Prix/nuit" className="px-4 py-3 border border-gray-300 rounded-lg" />
-          <input type="number" value={formData.price_per_week} onChange={(e) => handleChange('price_per_week', Number(e.target.value))} placeholder="Prix/semaine" className="px-4 py-3 border border-gray-300 rounded-lg" />
-          <input type="number" value={formData.max_guests} onChange={(e) => handleChange('max_guests', Number(e.target.value))} placeholder="Max personnes" className="px-4 py-3 border border-gray-300 rounded-lg" />
+        
+        {/* Title */}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Titre du logement</label>
+          <input 
+            type="text" 
+            value={formData.title} 
+            onChange={(e) => handleChange('title', e.target.value)} 
+            placeholder="Ex: Appartement moderne à Gombe" 
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" 
+          />
         </div>
-        <div className="grid grid-cols-4 gap-3">
-          {AMENITIES_LIST.map(amenity => (
-            <label key={amenity} className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-              <input type="checkbox" checked={formData.amenities?.includes(amenity)} onChange={() => handleAmenityToggle(amenity)} className="w-4 h-4" />
-              <span className="text-sm">{amenity}</span>
+
+        {/* Description */}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
+          <textarea 
+            value={formData.description} 
+            onChange={(e) => handleChange('description', e.target.value)} 
+            placeholder="Décrivez le logement, ses caractéristiques, etc." 
+            rows={4} 
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" 
+          />
+        </div>
+
+        {/* Neighborhood */}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Quartier</label>
+          <select 
+            value={formData.neighborhood} 
+            onChange={(e) => handleChange('neighborhood', e.target.value)} 
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          >
+            {NEIGHBORHOODS.map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </div>
+
+        {/* Pricing and Guests */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Prix par nuit ($)</label>
+            <input 
+              type="number" 
+              value={formData.price_per_night} 
+              onChange={(e) => handleChange('price_per_night', Number(e.target.value))} 
+              placeholder="50" 
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" 
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Prix par semaine ($)</label>
+            <input 
+              type="number" 
+              value={formData.price_per_week} 
+              onChange={(e) => handleChange('price_per_week', Number(e.target.value))} 
+              placeholder="300" 
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" 
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Nombre max de personnes</label>
+            <input 
+              type="number" 
+              value={formData.max_guests} 
+              onChange={(e) => handleChange('max_guests', Number(e.target.value))} 
+              placeholder="2" 
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" 
+            />
+          </div>
+        </div>
+
+        {/* Amenities */}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-3">Équipements</label>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {AMENITIES_LIST.map(amenity => (
+              <label key={amenity} className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                <input 
+                  type="checkbox" 
+                  checked={formData.amenities?.includes(amenity)} 
+                  onChange={() => handleAmenityToggle(amenity)} 
+                  className="w-4 h-4" 
+                />
+                <span className="text-sm">{amenity}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Media Upload */}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-3">Photos et Vidéos</label>
+          
+          {/* Upload Button */}
+          <div className="mb-4">
+            <label className="flex items-center justify-center gap-2 px-6 py-4 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors">
+              <Upload className="w-5 h-5 text-gray-600" />
+              <span className="text-sm font-medium text-gray-700">
+                {uploadingMedia ? 'Téléchargement en cours...' : 'Cliquer pour ajouter des photos/vidéos'}
+              </span>
+              <input 
+                type="file" 
+                multiple 
+                accept="image/*,video/*" 
+                onChange={handleMediaUpload} 
+                className="hidden" 
+                disabled={uploadingMedia}
+              />
             </label>
-          ))}
+            <p className="text-xs text-gray-500 mt-2">Formats acceptés: JPG, PNG, MP4, MOV. Vous pouvez sélectionner plusieurs fichiers.</p>
+          </div>
+
+          {/* Upload Progress */}
+          {Object.keys(uploadProgress).length > 0 && (
+            <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+              {Object.entries(uploadProgress).map(([fileName, progress]) => (
+                <div key={fileName} className="text-sm text-blue-800">
+                  {fileName}: {progress}%
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Photos Preview */}
+          {formData.photos && formData.photos.length > 0 && (
+            <div className="mb-4">
+              <p className="text-sm font-medium text-gray-700 mb-2">Photos ({formData.photos.length})</p>
+              <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
+                {formData.photos.map((photo, index) => (
+                  <div key={index} className="relative group">
+                    <img src={photo} alt={`Photo ${index + 1}`} className="w-full h-24 object-cover rounded-lg" />
+                    <button
+                      type="button"
+                      onClick={() => removeMedia(photo, 'photo')}
+                      className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                    {index === 0 && (
+                      <div className="absolute bottom-1 left-1 px-2 py-0.5 bg-blue-600 text-white text-xs rounded">
+                        Principal
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Videos Preview */}
+          {formData.videos && formData.videos.length > 0 && (
+            <div>
+              <p className="text-sm font-medium text-gray-700 mb-2">Vidéos ({formData.videos.length})</p>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {formData.videos.map((video, index) => (
+                  <div key={index} className="relative group">
+                    <video src={video} className="w-full h-24 object-cover rounded-lg" />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 rounded-lg">
+                      <Video className="w-8 h-8 text-white" />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeMedia(video, 'video')}
+                      className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-        <input type="url" value={formData.photos?.[0] || ''} onChange={(e) => handleChange('photos', [e.target.value])} placeholder="URL de la photo" className="w-full px-4 py-3 border border-gray-300 rounded-lg" />
+
+        {/* Status Checkboxes */}
         <div className="flex gap-6">
-          <label className="flex items-center gap-2"><input type="checkbox" checked={formData.is_active} onChange={(e) => handleChange('is_active', e.target.checked)} />Actif</label>
-          <label className="flex items-center gap-2"><input type="checkbox" checked={formData.is_verified} onChange={(e) => handleChange('is_verified', e.target.checked)} />Vérifié</label>
+          <label className="flex items-center gap-2">
+            <input 
+              type="checkbox" 
+              checked={formData.is_active} 
+              onChange={(e) => handleChange('is_active', e.target.checked)} 
+              className="w-4 h-4"
+            />
+            <span className="text-sm font-medium">Actif</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input 
+              type="checkbox" 
+              checked={formData.is_verified} 
+              onChange={(e) => handleChange('is_verified', e.target.checked)} 
+              className="w-4 h-4"
+            />
+            <span className="text-sm font-medium">Vérifié</span>
+          </label>
         </div>
-        <textarea value={formData.internal_notes} onChange={(e) => handleChange('internal_notes', e.target.value)} placeholder="Notes internes" rows={3} className="w-full px-4 py-3 border border-gray-300 rounded-lg" />
-        <div className="flex gap-4">
-          <button onClick={() => onSave(formData)} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"><Save className="w-4 h-4" />Enregistrer</button>
-          <button onClick={onCancel} className="px-6 py-3 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50">Annuler</button>
+
+        {/* Internal Notes */}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Notes internes (non visibles publiquement)</label>
+          <textarea 
+            value={formData.internal_notes} 
+            onChange={(e) => handleChange('internal_notes', e.target.value)} 
+            placeholder="Notes pour l'équipe..." 
+            rows={3} 
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" 
+          />
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-4 pt-4">
+          <button 
+            onClick={() => onSave(formData)} 
+            disabled={uploadingMedia}
+            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            <Save className="w-4 h-4" />
+            Enregistrer
+          </button>
+          <button 
+            onClick={onCancel} 
+            className="px-6 py-3 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50"
+          >
+            Annuler
+          </button>
         </div>
       </div>
     </div>

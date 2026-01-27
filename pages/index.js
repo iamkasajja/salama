@@ -79,34 +79,16 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* Trust Signals Section */}
+      {/* Hero Section - Compact */}
       <section className="bg-gradient-to-b from-blue-50 to-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="text-center mb-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center">
             <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
               Logements disponibles à Kinshasa
             </h1>
             <p className="text-lg text-gray-600">
               Courts séjours sûrs et fiables. Aucune surprise.
             </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            <TrustCard 
-              icon={<Shield className="w-10 h-10 text-blue-600" />} 
-              title="Logements vérifiés" 
-              description="Chaque logement est inspecté et approuvé par notre équipe" 
-            />
-            <TrustCard 
-              icon={<Users className="w-10 h-10 text-blue-600" />} 
-              title="Hôtes de confiance" 
-              description="Propriétaires sélectionnés et fiables pour votre sécurité" 
-            />
-            <TrustCard 
-              icon={<Phone className="w-10 h-10 text-blue-600" />} 
-              title="Support local" 
-              description="Assistance WhatsApp disponible pour toute question" 
-            />
           </div>
         </div>
       </section>
@@ -180,6 +162,33 @@ export default function LandingPage() {
               />
             ))}
           </div>
+        )}
+
+        {/* Trust Signals Section - Moved Below Listings */}
+        {filteredListings.length > 0 && (
+          <section className="mt-16 mb-8">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Pourquoi choisir Salama?</h2>
+              <p className="text-gray-600">Votre sécurité et confort sont nos priorités</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <TrustCard 
+                icon={<Shield className="w-10 h-10 text-blue-600" />} 
+                title="Logements vérifiés" 
+                description="Chaque logement est inspecté et approuvé par notre équipe" 
+              />
+              <TrustCard 
+                icon={<Users className="w-10 h-10 text-blue-600" />} 
+                title="Hôtes de confiance" 
+                description="Propriétaires sélectionnés et fiables pour votre sécurité" 
+              />
+              <TrustCard 
+                icon={<Phone className="w-10 h-10 text-blue-600" />} 
+                title="Support local" 
+                description="Assistance WhatsApp disponible pour toute question" 
+              />
+            </div>
+          </section>
         )}
       </main>
 
