@@ -80,12 +80,33 @@ export default function ListingsPage() {
         <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Quartier</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Commune</label>
               <select value={filters.neighborhood} onChange={(e) => setFilters({...filters, neighborhood: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                <option value="">Tous les quartiers</option>
+                <option value="">Tous les communes</option>
+                <option value="Bandalungwa">Bandalungwa</option>
+                <option value="Barumbu">Barumbu</option>
+                <option value="Bumbu">Bumbu</option>
                 <option value="Gombe">Gombe</option>
+                <option value="Kalamu">Kalamu</option>
+                <option value="Kasa-Vubu">Kasa-Vubu</option>
+                <option value="Kimbanseke">Kimbanseke</option>
                 <option value="Kinshasa">Kinshasa</option>
+                <option value="Kintambo">Kintambo</option>
+                <option value="Kisenso">Kisenso</option>
+                <option value="Lemba">Lemba</option>
+                <option value="Limete">Limete</option>
+                <option value="Lingwala">Lingwala</option>
+                <option value="Makala">Makala</option>
+                <option value="Maluku">Maluku</option>
+                <option value="Masina">Masina</option>
+                <option value="Matete">Matete</option>
+                <option value="Mont Ngafula">Mont Ngafula</option>
+                <option value="Ndjili">Ndjili</option>
+                <option value="Ngaba">Ngaba</option>
                 <option value="Ngaliema">Ngaliema</option>
+                <option value="Ngiri-Ngiri">Ngiri-Ngiri</option>
+                <option value="Nsele">Nsele</option>
+                <option value="Selembao">Selembao</option>
               </select>
             </div>
             <div>

@@ -5,7 +5,7 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage
 import { db, auth, storage } from '../firebase/config';
 import { Home, Plus, Edit2, Trash2, Check, Save, Eye, BarChart3, Shield, LogOut, Upload, X, Image as ImageIcon, Video } from 'lucide-react';
 
-const NEIGHBORHOODS = ["Gombe", "Ngaliema", "Limete", "Ma Campagne", "Binza"];
+const NEIGHBORHOODS = ["Bandalungwa", "Barumbu", "Bumbu", "Gombe", "Kalamu", "Kasa-Vubu", "Kimbanseke", "Kinshasa", "Kintambo", "Kisenso", "Lemba", "Limete", "Lingwala", "Makala", "Maluku", "Masina", "Matete", "Mont Ngafula", "Ndjili", "Ngaba", "Ngaliema", "Ngiri-Ngiri", "Nsele", "Selembao"];
 const AMENITIES_LIST = ["Wi-Fi", "AC", "Generator", "Water", "Security", "Parking", "Kitchen", "TV"];
 
 export default function AdminPanel() {
@@ -210,7 +210,7 @@ const ListingsView = ({ listings, onEdit, onDelete, onNew }) => (
         <thead className="bg-gray-50 border-b border-gray-200">
           <tr>
             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Logement</th>
-            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Quartier</th>
+            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Commune</th>
             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Prix</th>
             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Statut</th>
             <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Actions</th>
@@ -349,7 +349,7 @@ const EditListingView = ({ listing, onSave, onCancel }) => {
 
         {/* Neighborhood */}
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Quartier</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Commune</label>
           <select 
             value={formData.neighborhood} 
             onChange={(e) => handleChange('neighborhood', e.target.value)} 
