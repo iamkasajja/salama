@@ -270,18 +270,24 @@ const EditListingView = ({ listing, onSave, onCancel }) => {
     const uploadedVideos = [...(formData.videos || [])];
 
     try {
+      // Generate a temporary ID for new listings
+      const listingId = formData.id || `temp_${Date.now()}`;
+      
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         const isVideo = file.type.startsWith('video/');
         const timestamp = Date.now();
         const fileName = `${timestamp}_${file.name}`;
-        const storageRef = ref(storage, `listings/${formData.id || 'new'}/${fileName}`);
+        const storageRef = ref(storage, `listings/${listingId}/${fileName}`);
 
         setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
 
         // Upload file
+        console.log('Uploading to:', `listings/${listingId}/${fileName}`);
         await uploadBytes(storageRef, file);
+        console.log('Upload successful, getting download URL...');
         const downloadURL = await getDownloadURL(storageRef);
+        console.log('Download URL:', downloadURL);
 
         if (isVideo) {
           uploadedVideos.push(downloadURL);
@@ -295,8 +301,10 @@ const EditListingView = ({ listing, onSave, onCancel }) => {
       handleChange('photos', uploadedPhotos);
       handleChange('videos', uploadedVideos);
       setUploadProgress({});
+      alert('Upload réussi!');
     } catch (error) {
-      alert('Erreur lors du téléchargement: ' + error.message);
+      console.error('Upload error:', error);
+      alert('Erreur lors du téléchargement: ' + error.message + '\n\nVérifiez la console pour plus de détails.');
     } finally {
       setUploadingMedia(false);
     }
