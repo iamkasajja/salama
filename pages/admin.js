@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
@@ -8,6 +8,11 @@ import { Home, Plus, Edit2, Trash2, Check, Save, Eye, BarChart3, Shield, LogOut,
 const NEIGHBORHOODS = ["Bandalungwa", "Barumbu", "Bumbu", "Gombe", "Kalamu", "Kasa-Vubu", "Kimbanseke", "Kinshasa", "Kintambo", "Kisenso", "Lemba", "Limete", "Lingwala", "Makala", "Maluku", "Masina", "Matete", "Mont Ngafula", "Ndjili", "Ngaba", "Ngaliema", "Ngiri-Ngiri", "Nsele", "Selembao"];
 const AMENITIES_LIST = ["Wi-Fi", "AC", "Generator", "Water", "Security", "Parking", "Kitchen", "TV"];
 
+// Session timeout configuration (in milliseconds)
+const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+// const INACTIVITY_TIMEOUT = 2 * 60 * 60 * 1000; // 2 hours (alternative)
+// const INACTIVITY_TIMEOUT = 1 * 60 * 60 * 1000; // 1 hour (alternative)
+
 export default function AdminPanel() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -16,6 +21,49 @@ export default function AdminPanel() {
   const [listings, setListings] = useState([]);
   const [view, setView] = useState('dashboard');
   const [editingListing, setEditingListing] = useState(null);
+  
+  // Timeout tracking for session management
+  const timeoutRef = useRef(null);
+
+  // Reset inactivity timer
+  const resetInactivityTimer = () => {
+    // Clear existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    // Set new timeout
+    timeoutRef.current = setTimeout(async () => {
+      console.log('Session expired due to inactivity');
+      alert('Votre session a expiré. Veuillez vous reconnecter.');
+      await signOut(auth);
+    }, INACTIVITY_TIMEOUT);
+  };
+
+  // Setup activity listeners
+  useEffect(() => {
+    if (!user) return;
+
+    // Reset timer on user activity
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+    
+    events.forEach(event => {
+      document.addEventListener(event, resetInactivityTimer);
+    });
+
+    // Start initial timer
+    resetInactivityTimer();
+
+    // Cleanup
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      events.forEach(event => {
+        document.removeEventListener(event, resetInactivityTimer);
+      });
+    };
+  }, [user]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -45,7 +93,13 @@ export default function AdminPanel() {
     }
   };
 
-  const handleLogout = async () => { await signOut(auth); };
+  const handleLogout = async () => { 
+    // Clear timeout on manual logout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    await signOut(auth); 
+  };
 
   const handleDeleteListing = async (id) => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer ce logement?')) {
