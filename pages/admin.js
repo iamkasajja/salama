@@ -332,6 +332,11 @@ const EditListingView = ({ listing, onSave, onCancel }) => {
         const isVideo = file.type.startsWith('video/');
         const timestamp = Date.now();
         const fileName = `${timestamp}_${file.name}`;
+        // 🔍 SANITY CHECK — ADD THIS
+        console.log(
+          "Storage bucket (runtime):",
+          storage.app.options.storageBucket
+        );
         const storageRef = ref(storage, `listings/${listingId}/${fileName}`);
 
         console.log('Starting upload to:', `listings/${listingId}/${fileName}`);
@@ -489,24 +494,44 @@ const EditListingView = ({ listing, onSave, onCancel }) => {
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-3">Photos et Vidéos</label>
           
-          {/* Upload Button */}
-          <div className="mb-4">
-            <label className="flex items-center justify-center gap-2 px-6 py-4 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors">
-              <Upload className="w-5 h-5 text-gray-600" />
+          {/* Separate Upload Buttons */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            {/* Photo Upload Button */}
+            <label className="flex items-center justify-center gap-2 px-6 py-4 border-2 border-dashed border-blue-300 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors">
+              <ImageIcon className="w-5 h-5 text-blue-600" />
               <span className="text-sm font-medium text-gray-700">
-                {uploadingMedia ? 'Téléchargement en cours...' : 'Cliquer pour ajouter des photos/vidéos'}
+                {uploadingMedia ? 'Téléchargement...' : 'Ajouter des photos'}
               </span>
               <input 
                 type="file" 
                 multiple 
-                accept="image/*,video/*" 
+                accept="image/jpeg,image/png,image/jpg" 
                 onChange={handleMediaUpload} 
                 className="hidden" 
                 disabled={uploadingMedia}
               />
             </label>
-            <p className="text-xs text-gray-500 mt-2">Formats acceptés: JPG, PNG, MP4, MOV. Vous pouvez sélectionner plusieurs fichiers.</p>
+
+            {/* Video Upload Button */}
+            <label className="flex items-center justify-center gap-2 px-6 py-4 border-2 border-dashed border-purple-300 rounded-lg cursor-pointer hover:border-purple-500 hover:bg-purple-50 transition-colors">
+              <Video className="w-5 h-5 text-purple-600" />
+              <span className="text-sm font-medium text-gray-700">
+                {uploadingMedia ? 'Téléchargement...' : 'Ajouter des vidéos'}
+              </span>
+              <input 
+                type="file" 
+                multiple 
+                accept="video/mp4,video/quicktime,video/mov" 
+                onChange={handleMediaUpload} 
+                className="hidden" 
+                disabled={uploadingMedia}
+              />
+            </label>
           </div>
+          
+          <p className="text-xs text-gray-500 mb-4">
+            <strong>Photos:</strong> JPG, PNG (sélection multiple) • <strong>Vidéos:</strong> MP4, MOV (sélection multiple)
+          </p>
 
           {/* Upload Progress */}
           {Object.keys(uploadProgress).length > 0 && (
