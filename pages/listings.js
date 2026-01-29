@@ -180,46 +180,144 @@ const ListingCard = ({ listing, onClick }) => (
   </div>
 );
 
-const ListingDetailModal = ({ listing, onClose, onBookClick }) => (
-  <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-    <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-      <div className="p-6">
-        <div className="flex justify-between items-start mb-4">
-          <h2 className="text-2xl font-bold text-gray-900">{listing.title}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">x</button>
-        </div>
-        <img src={listing.photos[0]} alt={listing.title} className="w-full h-64 object-cover rounded-lg mb-4" />
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 text-gray-600">
-            <MapPin className="w-5 h-5" />
-            <span>{listing.neighborhood}</span>
+const ListingDetailModal = ({ listing, onClose, onBookClick }) => {
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  
+  // Combine photos and videos into one media array
+  const media = [];
+  if (listing.photos && listing.photos.length > 0) {
+    listing.photos.forEach(photo => media.push({ type: 'photo', url: photo }));
+  }
+  if (listing.videos && listing.videos.length > 0) {
+    listing.videos.forEach(video => media.push({ type: 'video', url: video }));
+  }
+  
+  // Fallback if no media
+  if (media.length === 0) {
+    media.push({ type: 'photo', url: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800' });
+  }
+
+  const nextPhoto = () => {
+    setCurrentPhotoIndex((prev) => (prev + 1) % media.length);
+  };
+
+  const prevPhoto = () => {
+    setCurrentPhotoIndex((prev) => (prev - 1 + media.length) % media.length);
+  };
+
+  const goToPhoto = (index) => {
+    setCurrentPhotoIndex(index);
+  };
+
+  const currentMedia = media[currentPhotoIndex];
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6">
+          <div className="flex justify-between items-start mb-4">
+            <h2 className="text-2xl font-bold text-gray-900">{listing.title}</h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">×</button>
           </div>
-          <div className="flex items-center gap-2 text-gray-600">
-            <Users className="w-5 h-5" />
-            <span>Jusqu a {listing.max_guests} personnes</span>
+          
+          {/* Image/Video Carousel */}
+          <div className="relative mb-4">
+            {currentMedia.type === 'photo' ? (
+              <img 
+                src={currentMedia.url} 
+                alt={`${listing.title} - Photo ${currentPhotoIndex + 1}`} 
+                className="w-full h-64 object-contain bg-gray-100 rounded-lg" 
+              />
+            ) : (
+              <video 
+                src={currentMedia.url} 
+                controls
+                className="w-full h-64 bg-gray-100 rounded-lg"
+              >
+                Votre navigateur ne supporte pas les vidéos.
+              </video>
+            )}
+            
+            {/* Navigation Arrows - Only show if multiple media */}
+            {media.length > 1 && (
+              <>
+                <button
+                  onClick={prevPhoto}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-800 rounded-full p-2 shadow-lg transition-all"
+                  aria-label="Média précédent"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <button
+                  onClick={nextPhoto}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-800 rounded-full p-2 shadow-lg transition-all"
+                  aria-label="Média suivant"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+
+                {/* Media Counter */}
+                <div className="absolute top-2 right-2 bg-black/60 text-white text-sm px-3 py-1 rounded-full">
+                  {currentPhotoIndex + 1} / {media.length}
+                </div>
+              </>
+            )}
+
+            {/* Dot Indicators */}
+            {media.length > 1 && (
+              <div className="flex justify-center gap-2 mt-3">
+                {media.map((item, index) => (
+                  <button
+                    key={index}
+                    onClick={() => goToPhoto(index)}
+                    className={`w-2 h-2 rounded-full transition-all ${
+                      index === currentPhotoIndex 
+                        ? 'bg-blue-600 w-8' 
+                        : 'bg-gray-300 hover:bg-gray-400'
+                    }`}
+                    aria-label={`Aller au média ${index + 1}`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-          {listing.description && (
+
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-gray-600">
+              <MapPin className="w-5 h-5" />
+              <span>{listing.neighborhood}</span>
+            </div>
+            <div className="flex items-center gap-2 text-gray-600">
+              <Users className="w-5 h-5" />
+              <span>Jusqu a {listing.max_guests} personnes</span>
+            </div>
+            {listing.description && (
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-2">Description</h3>
+                <p className="text-gray-600">{listing.description}</p>
+              </div>
+            )}
             <div>
-              <h3 className="font-semibold text-gray-900 mb-2">Description</h3>
-              <p className="text-gray-600">{listing.description}</p>
+              <h3 className="font-semibold text-gray-900 mb-2">Equipements</h3>
+              <div className="flex flex-wrap gap-2">
+                {listing.amenities && listing.amenities.map(amenity => (
+                  <span key={amenity} className="bg-gray-100 px-3 py-1 rounded text-sm">{amenity}</span>
+                ))}
+              </div>
             </div>
-          )}
-          <div>
-            <h3 className="font-semibold text-gray-900 mb-2">Equipements</h3>
-            <div className="flex flex-wrap gap-2">
-              {listing.amenities && listing.amenities.map(amenity => (
-                <span key={amenity} className="bg-gray-100 px-3 py-1 rounded text-sm">{amenity}</span>
-              ))}
+            <div className="border-t pt-4">
+              <div className="text-3xl font-bold text-gray-900 mb-1">${listing.price_per_night} / nuit</div>
+              <div className="text-gray-600">${listing.price_per_week} / semaine</div>
             </div>
+            <button onClick={() => onBookClick(listing)} className="block w-full px-6 py-4 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors text-center">Reserver maintenant</button>
+            <p className="text-sm text-gray-500 text-center">Vous recevrez une confirmation par email et WhatsApp s ouvrira automatiquement</p>
           </div>
-          <div className="border-t pt-4">
-            <div className="text-3xl font-bold text-gray-900 mb-1">${listing.price_per_night} / nuit</div>
-            <div className="text-gray-600">${listing.price_per_week} / semaine</div>
-          </div>
-          <button onClick={() => onBookClick(listing)} className="block w-full px-6 py-4 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors text-center">Reserver maintenant</button>
-          <p className="text-sm text-gray-500 text-center">Vous recevrez une confirmation par email et WhatsApp s ouvrira automatiquement</p>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
+};

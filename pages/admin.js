@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, auth, storage } from '../firebase/config';
 import { Home, Plus, Edit2, Trash2, Check, Save, Eye, BarChart3, Shield, LogOut, Upload, X, Image as ImageIcon, Video } from 'lucide-react';
 
@@ -332,24 +332,49 @@ const EditListingView = ({ listing, onSave, onCancel }) => {
         const isVideo = file.type.startsWith('video/');
         const timestamp = Date.now();
         const fileName = `${timestamp}_${file.name}`;
+        // 🔍 SANITY CHECK — ADD THIS
+        console.log(
+          "Storage bucket (runtime):",
+          storage.app.options.storageBucket
+        );
         const storageRef = ref(storage, `listings/${listingId}/${fileName}`);
 
-        setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
+        console.log('Starting upload to:', `listings/${listingId}/${fileName}`);
+        
+        // Use uploadBytesResumable for progress tracking
+        const uploadTask = uploadBytesResumable(storageRef, file);
 
-        // Upload file
-        console.log('Uploading to:', `listings/${listingId}/${fileName}`);
-        await uploadBytes(storageRef, file);
-        console.log('Upload successful, getting download URL...');
-        const downloadURL = await getDownloadURL(storageRef);
-        console.log('Download URL:', downloadURL);
+        // Wait for upload to complete with progress tracking
+        await new Promise((resolve, reject) => {
+          uploadTask.on(
+            'state_changed',
+            (snapshot) => {
+              // Calculate and update progress
+              const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+              console.log(`Upload progress for ${file.name}: ${progress}%`);
+              setUploadProgress(prev => ({ ...prev, [file.name]: progress }));
+            },
+            (error) => {
+              // Handle upload errors
+              console.error('Upload failed:', error);
+              reject(error);
+            },
+            async () => {
+              // Upload completed successfully
+              console.log('Upload completed, getting download URL...');
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+              console.log('Download URL:', downloadURL);
 
-        if (isVideo) {
-          uploadedVideos.push(downloadURL);
-        } else {
-          uploadedPhotos.push(downloadURL);
-        }
+              if (isVideo) {
+                uploadedVideos.push(downloadURL);
+              } else {
+                uploadedPhotos.push(downloadURL);
+              }
 
-        setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
+              resolve();
+            }
+          );
+        });
       }
 
       handleChange('photos', uploadedPhotos);
