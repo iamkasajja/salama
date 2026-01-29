@@ -332,11 +332,6 @@ const EditListingView = ({ listing, onSave, onCancel }) => {
         const isVideo = file.type.startsWith('video/');
         const timestamp = Date.now();
         const fileName = `${timestamp}_${file.name}`;
-        // 🔍 SANITY CHECK — ADD THIS
-        console.log(
-          "Storage bucket (runtime):",
-          storage.app.options.storageBucket
-        );
         const storageRef = ref(storage, `listings/${listingId}/${fileName}`);
 
         console.log('Starting upload to:', `listings/${listingId}/${fileName}`);
